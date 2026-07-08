@@ -1,11 +1,12 @@
 name: x86-64 Pull and Save Docker Image
+
 on:
   workflow_dispatch:
     inputs:
       docker_images:
         description: '请填写docker镜像名称 多个用英文逗号分开'
         required: true
-        default: 'alpine:latest'  # 设置默认的 Docker 镜像列表
+        default: 'alpine:latest'
 
 jobs:
   pull_and_package:
@@ -17,25 +18,20 @@ jobs:
 
     - name: Clean up Docker to free space
       run: |
-          docker system prune -a -f
-          docker volume prune -f
+        docker system prune -a -f
+        docker volume prune -f
 
     - name: Pull Docker Images and Package
       run: |
-        images="${{ github.event.inputs.docker_images }}"
-        IFS=',' read -r -a image_array <<< "$images"
-        for image in "${image_array[@]}"; do
-          docker pull "${image}" --platform "linux/amd64"
-          docker save "${image}" | gzip > "${image//\//_}-amd64.tar.gz"
-        done
+        bash .github/scripts/package-images.sh \
+          "linux/amd64" \
+          "amd64" \
+          "x86-64-images.tar.gz" \
+          "${{ github.event.inputs.docker_images }}"
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: docker-images-tar
         path: x86-64-images.tar.gz
-        retention-days: 1  # 将保留天数设置为 1 天 最多可设置90天
-
-    - name: Clean up intermediate files
-      run: |
-        rm *-amd64.tar
+        retention-days: 1
